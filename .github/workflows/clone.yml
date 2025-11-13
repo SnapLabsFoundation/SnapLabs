@@ -2,6 +2,9 @@ name: Import v2 Folder from External Repo
 
 on:
   workflow_dispatch:  # manually trigger this workflow
+  push:
+  schedule: 
+  -  cron: "*/5 * * * *"
 
 permissions:
   contents: write  # required to push to the current repo
@@ -28,5 +31,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Import v2 folder from kRxZykRxZy/main-site-v1"
+          git commit -m "Sync Repos"
           git push

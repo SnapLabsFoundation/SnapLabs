@@ -20,13 +20,13 @@ jobs:
 
       - name: Copy v2 folder from external repo
         run: |
-          cp -r external-repo/v2 ./v2
+          cd external-repo/v2
+          cp -r . ../../
 
       - name: Commit and push v2 folder
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cd v2
           git add .
           git commit -m "Import v2 folder from kRxZykRxZy/main-site-v1"
           git push

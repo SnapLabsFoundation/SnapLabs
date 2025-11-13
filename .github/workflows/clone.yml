@@ -1,0 +1,31 @@
+name: Import v2 Folder from External Repo
+
+on:
+  workflow_dispatch:  # manually trigger this workflow
+
+permissions:
+  contents: write  # required to push to the current repo
+
+jobs:
+  import-v2:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+
+      - name: Clone external repo
+        run: |
+          git clone https://github.com/kRxZykRxZy/main-site-v1 external-repo
+
+      - name: Copy v2 folder from external repo
+        run: |
+          cp -r external-repo/v2 ./v2
+
+      - name: Commit and push v2 folder
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v2
+          git commit -m "Import v2 folder from kRxZykRxZy/main-site-v1"
+          git push

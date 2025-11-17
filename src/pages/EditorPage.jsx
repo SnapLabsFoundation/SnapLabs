@@ -219,9 +219,9 @@ class EditorPage extends React.Component {
     if (!loaded) return <div>Loading...</div>;
 
     // ---------------- BLOCKS ----------------
-    if (projectType === "blocks") {
+    if (true) {
       const baseUrl = "https://myscratchblocks.github.io/scratch-gui";
-      const finalUrl = `${baseUrl}#${id}?username=${this.state.username || "test"}`;
+      const finalUrl = `${baseUrl}?username=${this.state.username || "test"}#${id}`;
 
       return (
         <iframe

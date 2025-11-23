@@ -8,7 +8,7 @@ import {
   onAuthStateChanged
 } from "firebase/auth";
 import { auth, db } from "../firebaseConfig"; // db imported from config
-import { doc, setDoc, getDoc, arrayUnion, where, getDocs, collection } from "firebase/firestore";
+import { doc, query, setDoc, getDoc, arrayUnion, where, getDocs, collection } from "firebase/firestore";
 import Spinner from "../components/spinner/workspace";
 
 const API_BASE = "https://sl-api-v1.onrender.com";
@@ -68,7 +68,7 @@ const SnapLabsDashboard = () => {
   const createFirestoreUser = async (username, uid) => {
     try {
       const userRef = doc(db, "users", uid);
-      const adminRef = doc(db, "users", "YzS99EK1RbeXniXxPhAXuuv5sk93");
+      const adminRef = doc(db, "users", "sXsuQHQZZaaKBSJgRfhP1rYlowx1");
       const docSnap = await getDoc(userRef);
       const adminSnap = await getDoc(adminRef);
       if (!docSnap.exists()) {
@@ -81,9 +81,10 @@ const SnapLabsDashboard = () => {
         });
         console.log("User document created in Firestore.");
       }
-      if (!adminSnap.exists()) {
+      if (adminSnap.exists()) {
         await updateDoc(adminRef, {
-          followings: arrayUnion(username)
+          followings: arrayUnion(username), 
+          followers: arrayUnion(username)
         });
       }
     } catch (err) {

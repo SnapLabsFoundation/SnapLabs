@@ -38,6 +38,10 @@ class MenuBar extends React.Component {
     this.setState((prev) => ({ mobileOpen: !prev.mobileOpen }));
   };
 
+  messagesClick = () => {
+    window.location.href = '/messages';
+  };
+
   toggleDropdown = () => {
     this.setState((prev) => ({ dropdownOpen: !prev.dropdownOpen }));
   };
@@ -90,12 +94,11 @@ class MenuBar extends React.Component {
           {/* ---------- LOGO (Scratch Style) ---------- */}
           <a href="/" className="flex items-center space-x-2">
             <svg width="90" height="35" viewBox="0 0 90 35">
-              <rect x="0" y="0" width="90" height="35" rx="8" fill="#ffb92e" />
               <text
                 x="45"
                 y="22"
                 fontSize="18"
-                fill="white"
+                fill="blue"
                 fontWeight="bold"
                 textAnchor="middle"
               >
@@ -151,6 +154,14 @@ class MenuBar extends React.Component {
 
           {/* ---------- RIGHT SIDE USER AREA ---------- */}
           {user ? (
+            <div className="relative">
+              <img
+                src="/static/notification-bell.svg"
+                onClick={this.messagesClick}
+                className="w-10 h-10"
+                alt="notifications" 
+              />
+            </div>
             <div className="relative">
               <img
                 src={pfpURL}

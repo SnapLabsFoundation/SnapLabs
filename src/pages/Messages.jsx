@@ -121,12 +121,15 @@ const MessagesPage = () => {
                 }`}
               >
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-gray-800">{msg.sender}</span>
+                  <span className="font-semibold text-gray-800"><a href={`/users/${msg.sender}`}>{msg.sender}</a></span>
                   <span className="text-sm text-gray-400">
                     {new Date(msg.timestamp).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-gray-700 mb-2">{msg.content}</p>
+                <p 
+                  className="text-gray-700 mb-2"
+                  dangerouslySetInnerHTML={{ __html: msg.content }}
+                ></p>
                 {!msg.read && (
                   <button
                     onClick={() => handleMarkAsRead(index)}

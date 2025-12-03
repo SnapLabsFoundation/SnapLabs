@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,10 +15,10 @@ const PROJECTS_DIR = path.join(__dirname, 'local_storage', 'projects');
 const WORKSPACES_DIR = path.join(__dirname, 'workspaces');
 
 // Ensure directories exist
-if (!fs.existsSync(PROJECTS_DIR)) fs.mkdirSync(PROJECTS_DIR, { recursive: true });
-if (!fs.existsSync(WORKSPACES_DIR)) fs.mkdirSync(WORKSPACES_DIR, { recursive: true });
+fs.mkdirSync(PROJECTS_DIR, { recursive: true });
+fs.mkdirSync(WORKSPACES_DIR, { recursive: true });
 
-// Create example project
+// Create example project if it doesn't exist
 const exampleProjectId = 'example';
 const exampleProjectFile = path.join(PROJECTS_DIR, `${exampleProjectId}.json`);
 
@@ -32,7 +33,7 @@ if (!fs.existsSync(exampleProjectFile)) {
   console.log('Created example project.');
 }
 
-// Helper to load project files
+// Helper to copy project JSON into workspace folder
 function loadProjectFiles(projectId) {
   const projectFile = path.join(PROJECTS_DIR, `${projectId}.json`);
   if (!fs.existsSync(projectFile)) throw new Error('Project not found');
@@ -40,7 +41,7 @@ function loadProjectFiles(projectId) {
   const projectData = JSON.parse(fs.readFileSync(projectFile, 'utf8'));
   const projectWorkspace = path.join(WORKSPACES_DIR, projectId);
 
-  if (!fs.existsSync(projectWorkspace)) fs.mkdirSync(projectWorkspace, { recursive: true });
+  fs.mkdirSync(projectWorkspace, { recursive: true });
 
   for (const [filename, content] of Object.entries(projectData.files)) {
     const filePath = path.join(projectWorkspace, filename);
@@ -51,60 +52,68 @@ function loadProjectFiles(projectId) {
   return projectWorkspace;
 }
 
-// Function to start code-server after installing
-function installAndStartCodeServer() {
-  console.log('Installing code-server...');
-  const installer = spawn('sh', ['-c', 'curl -fsSL https://code-server.dev/install.sh | sh'], { stdio: 'inherit' });
+// Reverse proxy so iframe works in browser (Render-safe)
+app.use('/vscode', createProxyMiddleware({
+  target: 'http://127.0.0.1:5733',
+  changeOrigin: true,
+  ws: true,
+  logLevel: 'silent'
+}));
 
-  installer.on('exit', () => {
-    console.log('Detecting code-server path...');
-    const which = spawn('sh', ['-c', 'which code-server'], { stdio: ['ignore', 'pipe', 'pipe'] });
+// Install code-server safely using the official non-root installer, then detect path & launch
+console.log("Installing code-server...");
+const installer = spawn('sh', ['-c', 'curl -fsSL https://code-server.dev/install.sh | sh'], { stdio: 'inherit' });
 
-    let output = '';
-    which.stdout.on('data', (data) => output += data.toString());
-    which.stderr.on('data', (data) => console.error('which error:', data.toString()));
+installer.on('exit', () => {
+  console.log("Detecting code-server path...");
+  const which = spawn('sh', ['-c', 'which code-server'], { stdio: ['ignore','pipe','pipe'] });
 
-    which.on('exit', (code) => {
-      const codeServerPath = output.trim();
-      if (!codeServerPath) {
-        console.error('❌ code-server not found after installation!');
-        return;
-      }
-      console.log('✅ code-server path:', codeServerPath);
+  let detectedPath = '';
+  which.stdout.on('data', d => detectedPath += d.toString());
 
-      const codeServer = spawn(codeServerPath, [
-        '--port', '5733',
-        '--auth', 'none',
-        WORKSPACES_DIR
-      ], { stdio: 'inherit' });
+  which.on('exit', () => {
+    const codeServerPath = detectedPath.trim();
 
-      codeServer.on('exit', (c) => console.log(`code-server exited with code ${c}`));
-      codeServer.on('error', (e) => console.error('code-server error:', e));
-    });
+    if (!codeServerPath) {
+      console.error("❌ code-server not found after installation!");
+      return;
+    }
+
+    console.log("✅ code-server path:", codeServerPath);
+    console.log("Launching code-server...");
+
+    const codeServer = spawn(codeServerPath, [
+      '--port', '5733',
+      '--auth', 'none',
+      '--bind-addr', '0.0.0.0:5733',
+      WORKSPACES_DIR
+    ], { stdio: 'inherit' });
+
+    codeServer.on('error', e => console.error("🔥 code-server error:", e));
   });
-}
+});
 
-// Start installation + code-server
-installAndStartCodeServer();
+// Safety: prevent crashes
+process.on('uncaughtException', e => console.error('❌ Uncaught Exception:', e));
+process.on('unhandledRejection', e => console.error('❌ Unhandled Rejection:', e));
 
-// Route to serve iframe
+// Serve project in iframe editor
 app.get('/projects/:id', (req, res) => {
   const projectId = req.params.id;
 
   try {
     const workspacePath = loadProjectFiles(projectId);
-
     res.send(`
       <html>
         <head>
           <title>Project ${projectId}</title>
           <style>
             html, body { margin: 0; height: 100%; }
-            iframe { border: none; width: 100%; height: 100%; }
+            iframe { width: 100%; height: 100%; border: none; }
           </style>
         </head>
         <body>
-          <iframe src="https://main-site-v1.onrender.com:5733/?folder=${encodeURIComponent(workspacePath)}"></iframe>
+          <iframe src="/vscode/?folder=${encodeURIComponent(workspacePath)}"></iframe>
         </body>
       </html>
     `);
@@ -114,4 +123,4 @@ app.get('/projects/:id', (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`Main server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Main server running on port ${PORT}`));
